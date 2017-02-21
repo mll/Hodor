@@ -1,0 +1,6 @@
+int main()
+{
+ for(int i in reverseRange(1,2)) printf("%d ",[i]).p(); 
+
+ return 0;
+}

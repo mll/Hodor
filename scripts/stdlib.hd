@@ -1,0 +1,89 @@
+
+/* Hodor standard library */
+
+float [] exp(float [] arg);
+float [] sin(float [] arg);
+float [] cos(float [] arg);
+float [] log(float [] arg);
+float [] log1p(float [] arg);
+float [] tan(float [] arg);
+float [] pow(float [] arg, float exponent);
+
+float pow(float arg, float exponent);
+
+
+//float  exp(float arg);
+//float  sin(float arg);
+//float  cos(float arg);
+//float  log(float arg);
+//float  log1p(float arg);
+//float  tan(float arg);
+
+void assert(int condition, string text);
+
+list range(int lo, int hi);
+
+list reverseRange(int hi, int lo);
+
+
+int getTimeReference();
+float getTimeDifference(int a, int b);
+
+
+//[float [] real, float [] imaginary] FFT(float [] x,float [] real, float [] imaginary);
+
+//[float [] real, float [] imaginary] reverseFFT(float [] x,float [] real,float [] imaginary);
+
+//float [] solve(float [] A, float [] B); /* solves A*X = B */
+
+void printResults();
+
+class HDarray
+{
+  list size();
+  float [] contract(int axisA, int axisB);
+//  float [] mean(int axis);
+  float [] copy();
+  void p();
+//  float det();
+//  float [] eigenValues();
+//  float [] eigenVectors();
+//  float [] transpose();
+}
+
+string simplePrintf(string buf,void object);
+
+string printf(string arg,list vars);
+
+class HDstring
+{
+  int length();
+  string copy();
+  void p(); /* prints on the screen */
+  list scanf(string arg);
+}
+
+class HDlist
+{
+  int count();
+  list copy();
+  void append(void object);
+  int size();
+}
+
+int open(string path, string params);
+int write(int fileNo,string text);
+void close(int fileNo);
+string read(int fileNo,int byteCount);
+
+
+/*class file
+{
+  int length();
+  void write(string text);
+  string read(int count);
+  string readLine();
+  void close();
+}*/
+
+

@@ -1,0 +1,133 @@
+
+void printRows(float [] x, float [] u, string vars, string format,string letter, int number)
+{
+  assert(u.size.count == 2,"Wrong dimension of u");                        
+  assert(u.size[2] == x.size[1],"Dimensions do not match for x and u");
+  assert(u.size[1] == vars.length,"Number of variables does not match string");
+  string outString = "";
+  string totalFormat = "%.8f ";
+  int zeroCounter = 3 - (number/1000 > 0 ? 1 : 0) - (number/100 > 0 ? 1 : 0) - (number/10 > 0 ? 1 : 0);
+  
+  string fileName = letter+"."+zeroCounter*"0"+number;
+  int plik = open(fileName,"w");
+  
+  for(string ch in vars) 
+    if(ch == "1") totalFormat+= format.copy+" "; 
+  totalFormat+="\n";
+  
+  for(float xVal, int pos in x)
+  {
+    list values;
+    values.append(xVal);
+    for(float uVal,int uPos in u[:,pos]) if(vars[uPos]=="1") values.append(uVal);  
+    outString+=printf(totalFormat,values);
+  }
+  write(plik,outString);
+  close(plik);
+}
+
+float[] computeFirstDerivative(float [] x, float [] u)
+{
+   int size = u.size[1];
+   //float printV[1,u.size()[1]]; 
+   float retVal[u]; /* this creates an empty array with dimension equal to u */
+   float denominator = x[2]-x[1];
+   
+   retVal[3:size-2] = 1.0/12.0 * u[1:size-4] - 2.0/3.0 * u[2:size-3] + 2.0/3.0 * u[4:size-1] - 1.0/12.0 * u[5:size];
+   
+   retVal[1] = -25.0/12.0 * u[1] + 4.0 * u[2] - 3.0 * u[3] + 4.0/3.0 * u[4] - 1.0/4.0 * u[5];
+   retVal[2] = -1.0/4.0 * u[1] - 5.0/6.0 * u[2] + 3.0/2.0 * u[3] - 1.0/2.0 * u[4] + 1.0/12.0 * u[5];
+   
+   retVal[size-1] = -1.0/12.0 * u[size-4] + 1.0/2.0 * u[size-3] - 3.0/2.0 * u[size-2] + 5.0/6.0 * u[size-1] + 1.0/4.0 * u[size]; 
+   retVal[size] = 1.0/4.0 * u[size-4] - 4.0/3.0 * u[size-3] + 3.0 * u[size-2] - 4.0 * u[size-1] + 25.0/12.0 * u[size];   
+   
+   retVal/=denominator;
+   
+//   printV[1,...] = retVal.copy;
+//   printRows(x,printV,"1","%.8e","z",0);
+   return retVal;
+} 
+
+
+float [] rSide(float [] x, float [] vars, float t)
+{
+   float retVal[vars];
+   float derivs[vars];
+   
+   derivs[u,...] = computeFirstDerivative(x,vars[u,...]);
+   derivs[v,...] = computeFirstDerivative(x,vars[v,...]);
+   
+   /* wave equation */
+   
+   retVal[u,...] = derivs[v,...]; /* this performs substitution on a subarray that has first element set to number assigned to 'u' and all the other taken */
+   retVal[v,...] = derivs[u,...];
+   retVal[v,1] = 0.0;
+   retVal[v,x.size[1]] = 0.0;
+   return retVal;
+}
+
+
+ void rk4step(float [] x, float [] u, float t, float h, function rightSide)
+{
+   float k1[u];
+   float k2[u];
+   float k3[u];
+   float k4[u];
+   k1 = rightSide(x,u,t);
+   k2 = rightSide(x,u + h/2*k1,t + h/2.0);
+   k3 = rightSide(x,u + h/2*k2,t + h/2.0); 
+   k4 = rightSide(x,u + h*k3,t + h); 
+   u = u + h/6.0 * (k1+ 2*k2 + 2*k3 + k4); 
+   t = t + h;
+}
+
+
+[float [] x, float [] u, float dx,float courant, float dt]  initGrid(float xLeft,float xRight,int size)
+{
+/* User defined parameters: */
+  float amp = 1.0;
+  float sigma = 300.0;
+  float courant = 0.5;
+
+  float dx = (xRight-xLeft)/(size-1);
+  float vars[2,size];
+  float x[size];
+
+  float dt = courant * dx;
+  
+  for(float val,int position in x) 
+    val = xLeft + dx * (position-1);
+  
+  vars[u,...] = amp*exp(-(x-0.5)**2*sigma);
+  vars[v,...] = vars[u,...].copy;
+  
+  return [x,vars,dx,courant,dt];
+} 
+
+
+int main()
+{
+   list grid = initGrid(0.0,1.0,8192);
+   int startTimeRef;
+   int stopTimeRef;
+   int printTimeRef;
+   float dt0 = 0.01;
+   int smallSteps = dt0/grid.dt;
+   float t = 0;
+   printRows(grid.x,grid.u,"11","%.8e","a",0);
+      
+   for(int i in range(1,1000))
+   {
+    printf("Executing step %d\n",[i]).p();
+    startTimeRef = getTimeReference();
+    for(int j in range(1,smallSteps))
+      rk4step(grid.x,grid.u,t,grid.dt,rSide);
+    stopTimeRef = getTimeReference();
+    printRows(grid.x,grid.u,"11","%.8e","a",i);
+    printTimeRef = getTimeReference();
+    printf("Time for computations: %.6f printing %.6f\n",[getTimeDifference(startTimeRef,stopTimeRef),getTimeDifference(stopTimeRef,printTimeRef)]).p();
+   }
+   return 0;
+}
+
+

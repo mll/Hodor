@@ -1,0 +1,97 @@
+
+
+/* float [] exp(float [] x); */
+
+
+[float six, float [] bom, int suzzie] computeList()
+{
+  float koko[5,5];
+  int bobas = 2 > 3 ? 2 : 3;
+  
+  return [6.0,koko[v,:],3];
+}
+
+float[] computeFirstDerivative(float [] x, float [] u)
+{
+   int size = 10;/*u.size[0];*/
+   float retVal[u]; /* this creates an empty array with dimension equal to u */
+   float denominator = x[2]-x[1];
+   
+   retVal[3:size-2] = 1.0/12.0 * u[1:size-4] - 2.0/3.0 * u[2:size-3] + 2.0/3.0 * u[4:size-1] - 1.0/12.0 * u[5:size];
+   
+   retVal[1] = -25.0/12.0 * u[1] + 4.0 * u[2] - 3.0 * u[3] + 4.0/3.0 * u[4] - 1.0/4.0 * u[5];
+   retVal[2] = -1.0/4.0 * u[1] - 5.0/6.0 * u[2] + 3.0/2.0 * u[3] - 1.0/2.0 * u[4] + 1.0/12.0 * u[5];
+   
+   retVal[size-1] = -1.0/12.0 * u[size-4] + 1.0/2.0 * u[size-3] - 3.0/2.0 * u[size-2] + 5.0/6.0 * u[size-1] + 1.0/4.0 * u[size]; 
+   retVal[size] = 1.0/4.0 * u[size-4] - 3.0/3.0 * u[size-3] + 3.0 * u[size-2] - 4.0 * u[size-1] + 25.0/12.0 * u[size];   
+   
+   retVal/=denominator;
+   return retVal;
+} 
+
+
+int main()
+{
+  float x[10];
+  float y[2,10];
+  float [] z;
+ 
+  for(float f,int b in x) f = b*0.1;
+  
+  for(float f,int b in y[u,...]) f = x[b]*x[b];
+  
+  for(float f,int b in y[v,...]) f = x[b]*x[b]*x[b];
+  
+  
+  rk4step(x,y,0.3,0.1,rightSide);
+  
+  list aa = computeList();
+  
+  int popa = 2 > 3 ? 4 : 5; 
+  
+  for(iterator i,int c in y) 
+  {
+       for(iterator k, int b in y)
+                    y[i] = 2.0; 
+  }
+/*  y = exp(x); */
+  
+  return 0;
+
+
+}
+
+void rk4step(float [] x, float [] u, float t, float h, function right)
+{
+   float k1[u];
+   float k2[u];
+   float k3[u];
+   float k4[u];
+   
+   k1 = right(x,u,t);
+   k2 = right(x,u + h/2*k1,t + h/2.0);
+   k3 = right(x,u + h/2*k2,t + h/2.0); 
+   k4 = right(x,u + h*k3,t + h);  
+   u = u + h/6.0 * (k1+ 2*k2 + 2*k3 + k4); 
+   t = t + h;
+}
+
+
+float [] rightSide(float [] x, float [] vars, float t)
+{
+   float retVal[vars];
+   float derivs[vars];
+   
+   derivs[u,...] = computeFirstDerivative(x,vars[u,...]);
+   derivs[v,...] = computeFirstDerivative(x,vars[v,...]);
+   
+   
+   /* wave equation */
+   
+   retVal[u,...] = - derivs[v,...]; /* this performs substitution on a subarray that has first element set to number assigned to 'u' and all the other taken */
+   retVal[v,...] = derivs[u,...];
+
+   return retVal;
+}
+
+

@@ -1,0 +1,145 @@
+
+class RBM
+{
+  float [] W;
+  float [] hBias;
+  float [] vBias;
+
+  float[] sigmoid(float [] x)
+  {
+    return 1.0/(1.0+exp(-x));
+  }
+  
+  void RBM(float [] input = nil, int nVisible = 786, int nHidden = 500,float [] W = nil, float [] hBias = nil, float [] vBias = nil)
+  {
+    if(W) self.W = W;
+    else
+    {
+      self.W.size = [nHidden,nVisible];
+      float r = 8.0*sqrt(6/(nHidden+nVisible)); 
+      for(float val in self.W)
+        val = (random()-0.5)*r;
+    }
+    if(hBias) self.hBias = hBias;
+    else self.hBias.size = [nHidden];
+    
+    if(vBias) self.vBias = vBias;
+    else self.vBias.size = [nVisible];
+  }
+  
+  [float [] preSigmoid, float [] sigmoid] propUp(float [] visible)
+  {
+    float preSigmoid[visible];
+    float sigm[visible];
+    for(int i in range(1,visible.size[0])
+       preSigmoid[i,...] = self.W * visible[i,...] + self.vBias;
+    sigm = sigmoid(preSigmoid);
+    return [sigm, preSigmoid]; 
+  }
+  
+  [float [] preSigmoid, float [] mean, float [] sample] sample_H_given_V_(float [] visible)
+  {
+    list retVal = self.propUp(visible);
+    float sample[visible];
+    float [] probability = retVal.sigmoid;
+    for(iterator it in visible)
+      sample[it] = random < probability[it] ? 1.0 : 0.0;
+    retVal.append(sample);
+    return retVal;
+  }
+  
+  [float [] preSigmoid, float [] sigmoid] propDown(float [] hidden)
+  {
+    float preSigmoid[hidden];
+    float sigm[hidden];
+    for(int i in range(1,visible.size[0])
+       preSigmoid[i,...] = hidden[i,...] * self.W  + self.hBias; 
+    sigm = sigmoid(preSigmoid);
+    return [sigm, preSigmoid]; 
+  }
+  
+  [float [] preSigmoid, float [] mean, float [] sample] sample_V_given_H_(float [] hidden)
+  {
+    list retVal = self.propDown(hidden);
+    float sample[hidden];
+    float [] probability = retVal.sigmoid;
+    for(iterator it in visible)
+      sample[it] = random < probability[it] ? 1.0 : 0.0;
+    retVal.append(sample);
+    return retVal;
+  }
+  
+  [float [] preSigmoidVisible, float [] meanVisible, float [] sampleVisible, float [] preSigmoidHidden, float [] meanHidden, float [] sampleHidden] gibbs_HVH(float [] hiddenSample)
+  {
+    list vh = self.sample_V_given_H(hiddenSample);
+    list hv = self.sample_H_given_V(vh.sample);
+    return vh+hv;
+  }
+  
+  [float [] preSigmoidHidden, float [] meanHidden, float [] sampleHidden, float [] preSigmoidVisible, float [] meanVisible, float [] sampleVisible] gibbs_VHV(float [] visibleSample)
+  {
+    list hv = self.sample_H_given_V(visibleSample);
+    list vh = self.sample_V_given_H(hv.sample);
+    return hv+vh;
+  }
+  
+  float freeEnergy(float [] visibleSample)
+  {
+    assert(visibleSample.size.count == 1,"VisibleSample has to be one-dimensional for this method");
+    float [] exponent = self.W * visibleSample + self.hBias;
+    float vBiasTerm = (visibleSample * self.vBias)[0];
+    float [] hidden = log1p(exp(exponent));
+    for(iterator it in exponent)
+      if(exponent[it] > 8) 
+         hidden[it] = exponent[it] + log1p(exp(-exponent[it]));
+    
+    return -vBiasTerm-hidden.sum;
+  }
+  
+  
+  [float [] dW, float [] dV, float [] dH] getCostUpdates(float learningRate = 0.1, float [] persistent = nil, int k = 1)
+  {
+    float [] hiddenStart;
+    float [] visibleStart = self.input;
+    
+    if(!persistent) 
+    {
+      list sample = sample_H_given_V(self.input)
+      hiddenStart = sample.sample;
+    }
+    else 
+    {
+      hiddenStart = persistent;
+    }
+    float Wupdate[self.W];
+    float Hupdate[self.hBias];
+    float Vupdate[self.vBias];
+    
+    float [] hiddenStop = hiddenStart;
+    float [] visibleStop = visibleStart;
+    
+    list iterationResult;
+    for(int i in range(1,k))
+    {
+         iterationResult = self.gibbs_HVH(hiddenStop);
+         visibleStop = iterationResult.sampleVisible;
+         hiddenStop = iterationResult.sampleHidden;
+    }
+    
+    persistent = hiddenStop;
+    
+    float [] stopSigmoid = self.propUp(visibleStop).sigmoid;
+    float [] startSigmoid = self.propUp(visibleStart).sigmoid;
+    
+    Wupdate = (stopSigmoid ^ visibleStop).contract(1,3) - (startSigmoid ^ visibleStart).contract(1,3); /* ^ is tensor product */
+      
+    Vupdate = visibleStop.mean(1) - visibleStart.mean(1);
+      
+    Hupdate = stopSigmoid.mean(1) - startSigmoid.mean(1);
+
+    Wupdate*= -learningRate/stopSigmoid.size[1];
+    Vupdate*= -learningRate;
+    Hupdate*= -learningRate;
+    return [Wupdate,Vupdate,Hupdate];
+  }
+};

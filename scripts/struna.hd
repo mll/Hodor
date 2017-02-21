@@ -1,0 +1,171 @@
+
+void printRows(list left, list right, string format, string letter, int number)
+{
+  int startTimeRef = getTimeReference();
+  string outString = "";
+  string totalFormat = "%.8f ";
+  int zeroCounter = 3 - (number/1000 > 0 ? 1 : 0) - (number/100 > 0 ? 1 : 0) - (number/10 > 0 ? 1 : 0);
+  
+  string fileName = letter+"."+zeroCounter*"0"+number;
+  int plik = open(fileName,"w");
+  
+  totalFormat+= format.copy+" "; 
+  totalFormat+="\n";
+  float [] iter = left.x;
+  float [] tymczasowa = left.u;
+
+  int medTimeRef = getTimeReference();
+  
+  for(float xVal, int pos in iter)
+  {
+    list values;
+    values.append(xVal);
+    values.append(tymczasowa[first,pos]);  
+    outString+=printf(totalFormat,values);
+  }
+  int afterLoop1TimeRef = getTimeReference();
+  
+  float [] iter2 = right.x;
+  float [] tymczasowa2 = right.u;
+  
+  for(float xVal, int pos in iter2)
+  {
+    if(pos>1)
+    {
+        list values;
+	values.append(xVal);
+	values.append(tymczasowa2[first,pos]);  
+	outString+=printf(totalFormat,values);
+    }
+  }
+  int afterLoop2TimeRef = getTimeReference();
+  
+  write(plik,outString);
+  close(plik);
+  
+  int afterWriteTimeRef = getTimeReference();
+//  printf("First part %f second part %f third %f write %f\n",[getTimeDifference(startTimeRef,medTimeRef),getTimeDifference(medTimeRef,afterLoop1TimeRef),getTimeDifference(afterLoop1TimeRef,afterLoop2TimeRef),getTimeDifference(afterLoop2TimeRef,afterWriteTimeRef)]).p();
+}
+
+void advance(float [] u, float courant)
+{
+  int end = u.size[2];
+  u[third,2:end-1] = 2.0*u[second,2:end-1]*(1.0-courant**2) - u[first,2:end-1] + courant**2 * (u[second,3:end] + u[second,1:end-2]);   
+}
+
+float advanceBead(list s, float u1, float ul1, float up1, float u0,float M)
+{
+   float cur = s.courant;
+   return 2.0*u1 - u0 + cur**2/(1.0d0 + M/s.dx)* (ul1+up1 - 2.0d0*u1); 
+}
+
+float advanceExiting(list s,float ul2, float ull2, float ul0, float ull0, float u0)
+{
+  float retVal = u0 - s.courant* ( (ull2+ull0)/2.0d0 - 2.0d0*(ul2+ul0) + 3.0d0/2.0d0*u0);
+  return retVal/(1.0d0+3.0d0/2.0d0*s.courant); 
+}
+
+
+void advanceBothGrids(list left, list right, float M)
+{
+   advance(left.u,left.courant);
+   float [] lu = left.u;
+   float [] ru = right.u;
+   
+   
+   lu[third,1] = 0.0;
+   lu[third,left.n] = advanceBead(left,lu[second,left.n],lu[second,left.n-1],ru[second,2],lu[first,left.n],M);
+   ru[third,1] = lu[third,left.n];
+   advance(right.u,right.courant);
+   ru[third,right.n] = advanceExiting(right,ru[third,right.n-1], ru[third,right.n-2], ru[first,right.n-1],ru[first,right.n-2],ru[first,right.n]);
+
+   ru[first,...] = ru[second,...];
+   ru[second,...] = ru[third,...];   
+   lu[first,...] = lu[second,...];
+   lu[second,...] = lu[third,...];
+}
+
+
+
+[float [] x, float [] u, float dx,float courant, float dt,int n]  initGrid(float xLeft, float xRight, int size, float courant)
+{
+/* User defined parameters: */
+
+  float dx = (xRight-xLeft)/(size-1);
+  float vars[4,size];
+  float x[size];
+
+  float dt = courant * dx;
+  
+  for(float val,int position in x) 
+    val = xLeft + dx * (position-1);
+  return [x,vars,dx,courant,dt,size];
+} 
+
+void sawInitialData(list left, list right,float amp, float sigma)
+{
+  float [] lu = left.u;
+  float [] ru = right.u;
+  float [] lx = left.x;
+
+  lu = 0.0;
+  ru = 0.0;
+  list leftSizes = lu.size;
+  int n = leftSizes[2];
+  
+  lu[first,120:n/2] = amp*lx[120:n/2] - amp*lx[120];
+  lu[first,n/2+1:n-119] = -amp*lx[n/2+1:n-119] + amp*lx[119];
+  
+  lu[second,120:n/2-1] = amp*lu[first,120:n/2-1] + left.dt*amp;
+  lu[second,n/2:n-118] = amp*lu[first,n/2:n-118] - left.dt*amp;
+}
+
+void gaussInitialData(list left, list right,float amp, float sigma)
+{
+  float [] lu = left.u;
+  float [] ru = right.u;
+  float [] lx = left.x;
+  lu = 0.0;
+  ru = 0.0;
+  list leftSizes = lu.size;
+  int n = leftSizes[2];
+  float dt = left.dt;
+  
+  lu[first,...] = amp*exp(-(lx-0.5)**2*sigma);
+  lu[second,...] = lu[first,...]  -2.0*(lx-0.5)*sigma*lu[first,...]*dt; // first deriv
+  lu[second,...] = lu[second,...] + ((-2.0*(lx-0.5)*sigma)**2 - 2.0 * sigma)* lu[first,...] * dt**2 / 2.0; // second deriv  
+}
+
+int main()
+{
+   float L = 1.0;
+   float gridEnd = 3.0;
+   float M = 1.0;
+   float courant = 0.5;
+   list leftGrid = initGrid(0.0,L,1001,courant);
+   list rightGrid = initGrid(L,gridEnd,(gridEnd-L)/leftGrid.dx,courant);
+     
+   gaussInitialData(leftGrid,rightGrid,1.0,300.0);
+    
+   int startTimeRef;
+   int stopTimeRef;
+   int printTimeRef;
+   float dt0 = 0.05;
+   int smallSteps = dt0/leftGrid.dt;
+   float t = 0;
+   printRows(leftGrid,rightGrid,"%.8e","a",0);
+      
+   for(int i in range(1,1000))
+   {
+    printf("Executing step %d\n",[i]).p();
+    startTimeRef = getTimeReference();
+    for(int j in range(1,smallSteps)) advanceBothGrids(leftGrid,rightGrid,M);
+    stopTimeRef = getTimeReference();
+    printRows(leftGrid,rightGrid,"%.8e","a",i);
+    printTimeRef = getTimeReference();
+    printf("Time for computations: %.6f printing %.6f\n",[getTimeDifference(startTimeRef,stopTimeRef),getTimeDifference(stopTimeRef,printTimeRef)]).p();
+   }
+   return 0;
+}
+
+

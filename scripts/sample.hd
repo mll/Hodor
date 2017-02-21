@@ -1,0 +1,32 @@
+void marek()
+{
+ int dadas;
+ dadas = 5;
+ dsa = 7;
+}
+
+/* komentarz */
+
+
+int rzezba(int kogos,int balbinka,int dug,float m[2,5])
+{
+   float basia[2,5];
+   string teksty;
+   2*3;
+   basia = 7*8+"basia"; /*komentarz*/
+   logiczny =  p+1 == 5 && p+2 > basia;
+   kogut = 3+7*8+5**9;
+}
+
+int wywolania()
+{
+//  decimal box[5,5];
+//  decimal box2[5,5];
+//  box = sin(box2) *5;
+
+  rzezba("skunks",5,bobo);
+ /* prosta_lista = [marek,"ala",kuk];
+  prosty_slownik = {marek:1,"ala":2,kuk:3}; */
+}
+
+

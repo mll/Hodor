@@ -1,0 +1,329 @@
+/* ******************** */
+/* Procedury pomocnicze */
+
+void printRows(list grid,string which,string format,string letter, int number)
+{
+  float [] u = grid.u;
+  assert(u.size[1] == which.length,printf("Wrong sizes: %d %d",[u.size[1],which.length]));
+  int startTimeRef = getTimeReference();
+  string outString = "";
+  string totalFormat = "%.8f ";
+  int zeroCounter = 3 - (number/1000 > 0 ? 1 : 0) - (number/100 > 0 ? 1 : 0) - (number/10 > 0 ? 1 : 0);
+  
+  string fileName = letter+"."+zeroCounter*"0"+number;
+  int plik = open(fileName,"w");
+  for(int i in range(1,which.length)) if(which[i]=="1") totalFormat+= format.copy+" "; 
+  totalFormat+="\n";
+  float [] iter = grid.x;
+  float [] tymczasowa = grid.u;
+
+  int medTimeRef = getTimeReference();
+  
+  for(float xVal, int pos in iter)
+  {
+    list values;
+    values.append(xVal);
+    for(int i in range(1,which.length)) if(which[i]=="1") values.append(tymczasowa[i,pos]);  
+    outString+=printf(totalFormat,values);
+  }
+  int afterLoop1TimeRef = getTimeReference();
+  
+  write(plik,outString);
+  close(plik);
+  
+  int afterWriteTimeRef = getTimeReference();
+//  printf("First part %f second part %f third %f write %f\n",[getTimeDifference(startTimeRef,medTimeRef),getTimeDifference(medTimeRef,afterLoop1TimeRef),getTimeDifference(afterLoop1TimeRef,afterLoop2TimeRef),getTimeDifference(afterLoop2TimeRef,afterWriteTimeRef)]).p();
+}
+
+float[] computeFirstDerivative(float [] x, float [] u)
+{
+   int size = u.size[1];
+   float retVal[u]; /* this creates an empty array with dimension equal to u */
+   float denominator = x[2]-x[1];
+   
+   retVal[3:size-2] = 1.0/12.0 * u[1:size-4] - 2.0/3.0 * u[2:size-3] + 2.0/3.0 * u[4:size-1] - 1.0/12.0 * u[5:size];
+   
+   retVal[1] = -25.0/12.0 * u[1] + 4.0 * u[2] - 3.0 * u[3] + 4.0/3.0 * u[4] - 1.0/4.0 * u[5];
+   retVal[2] = -1.0/4.0 * u[1] - 5.0/6.0 * u[2] + 3.0/2.0 * u[3] - 1.0/2.0 * u[4] + 1.0/12.0 * u[5];
+   
+   retVal[size-1] = -1.0/12.0 * u[size-4] + 1.0/2.0 * u[size-3] - 3.0/2.0 * u[size-2] + 5.0/6.0 * u[size-1] + 1.0/4.0 * u[size]; 
+   retVal[size] = 1.0/4.0 * u[size-4] - 4.0/3.0 * u[size-3] + 3.0 * u[size-2] - 4.0 * u[size-1] + 25.0/12.0 * u[size];   
+   
+   retVal/=denominator;
+   
+   return retVal;
+} 
+
+float [] computeDissipation(float [] x, float [] u, float eps, float dt)
+{
+   float retVal[u];
+   int N = x.size[1];
+   float dx = x[2]-x[1];
+   retVal[1:3] = 0.0;
+   retVal[N-2,N] = 0.0;
+   retVal[4:N-3] = u[1:N-6] - 6.0 * u[2:N-5] + 15.0 * u[3:N-4] - 20.0 * u[4:N-3] + 15.0 * u[5:N-2] - 6.0 * u[6:N-1] + u[7:N];
+   retVal = retVal * eps * dt / dx / 64.0;
+   return retVal;
+}
+
+float [] rs(float x, float [] dependent,float [] independent)
+{
+  return independent;
+}
+
+
+/*float [] ODE_rk4(float [] x, float [] additionalVariables, float [] boundaryValues, int direction, function rightSide)
+{
+   int numberOfUnknownFunctions = boundaryValues.size[1];
+   int numberOfAdditionalVariables = additionalVariables.size[1];
+   int N = x.size[1];
+   int dir = direction;
+   int kStart = direction == 1 ? 1 : N;
+   int kStop = direction == 1 ? N-1 : 2;
+   
+   float retVal[numberOfUnknownFunctions,N];
+   
+   float splineTemporaryTable[numberOfAdditionalVariables,N];
+   float inBetweenAdditionalVariableValues[numberOfAdditionalVariables];
+   
+   float dx = x[2]-x[1];
+   float h = dir * dx;
+   float hh = dir * dx / 2;
+   float h6 = dir * dx / 6;
+   
+   float xh;
+   if(numberOfAdditionalVariables) for(int i in range(1,numberOfAdditionalVariables))
+   { 
+      float d1 = (additionalVariables[i,2]-additionalVariables[i,1])/dx;
+      float dn = (additionalVariables[i,N]-additionalVariables[i,N-1])/dx;
+      splineTemporaryTable[i,...] = spline(x,additionalVariables[i,...],d1,dn);
+   }
+   retVal[:,kStart] = boundaryValues;
+   for(int i in range(kStart,kStop))
+   {
+     xh = x[i]+hh;
+     if(numberOfAdditionalVariables) for(int j in range(1,numberOfAdditionalVariables)) inBetweenAdditionalVariableValues[j] = splint(i,i+1,x,additionalVariables[j,...],splineTemporaryTable[j,...],xh);
+          
+     float [] dydx = rightSide(x[i],retVal[:,i],additionalVariables[:,i]).copy;
+     float [] yt = retVal[:,i] + hh*dydx;
+     float [] dyt = rightSide(xh,yt,inBetweenAdditionalVariableValues).copy;
+     yt = retVal[:,i] + hh * dyt;
+     float [] dym = rightSide(xh,yt,inBetweenAdditionalVariableValues).copy;
+     yt = retVal[:,i] + h * dym;
+     dym = dyt + dym;
+     dyt = rightSide(x[i+dir],yt,additionalVariables[:,i+dir]);
+     retVal[:,i+dir] = retVal[:,i] + h6 * (dydx + dyt + 2.0*dym);
+   }
+   return retVal;
+}
+*/
+/* yp1 i ypn to wartosc pierwszej pochodnej na poczatku i koncu domeny. Jesli nie sa znane to mozna wstawic 1.0d30 co sprawi ze wezmiemy druga pochodna rowna 0 w tych punktach (natural spline) */
+float [] spline(float [] x, float [] y, float yp1, float ypn)
+{
+  int N = x.size[1];
+  float qn;
+  float un;
+  float retVal[y];
+  float ux[x];
+  
+  if(yp1 > 0.99d30) 
+  {
+    retVal[1] = 0.0;
+    ux[1]     = 0.0;    
+  }
+  else
+  {
+    retVal[1] = -0.5;
+    ux[1]     = (3.0d0/(x[2]-x[1]))*((y[2]-y[1])/(x[2]-x[1])-yp1);
+  }
+  
+  float sig[N-2]  = (x[2:N-1]-x[1:N-2])/(x[3:N]-x[1:N-2]);  
+  float uxtmp[N-2] = (6.0d0*((y[3:N]-y[2:N-1])/(x[3:N]-x[2:N-1])-(y[2:N-1]-y[1:N-2]) /(x[2:N-1]-x[1:N-2]))/(x[3:N]-x[1:N-2]));
+  
+  for (int i in range(2,N-1))
+  {
+    float p = sig[i-1] * retVal[i-1]+2.0;
+    retVal[i] = (sig[i-1]-1.0)/p;
+    ux[i] = (uxtmp[i-1]-sig[i-1]*ux[i-1])/p;
+  }
+  
+  if (ypn > 0.99d30)
+  {
+        qn=0.0d0;
+        un=0.0d0;
+  }
+  else
+  {
+       qn=0.5d0;
+       un=(3.0d0/(x[N]-x[N-1]))*(ypn-(y[N]-y[N-1])/(x[N]-x[N-1]));
+  }
+  retVal[N] = (un - qn*ux[N-1])/(qn*retVal[N-1]+1.0);
+  
+  
+  for(int k in reverseRange(N-1,1))
+  {
+    retVal[k] = retVal[k]*retVal[k+1]+ux[k];
+  }
+  return retVal;
+
+}
+
+float splint(int klo, int khi, float [] xIn, float [] yIn, float [] aux, float x)
+{
+//  int m1 = getTimeReference();
+  float a;
+  float b;
+  float h;
+  int N = xIn.size[1];
+   
+  h = xIn[khi]-xIn[klo];
+  assert(h > 0.0,"Nieprawidlowy wektor xIn na wejsciu splint");
+  a = (xIn[khi]-x)/h;
+  b = (x - xIn[klo])/h;
+  float retVal = a*yIn[klo]+b * yIn[khi]+ ((a**3-a)*aux[klo]+(b**3-b)*aux[khi])*(h**2)/6.0d0;
+//  int m2 = getTimeReference();
+//  printf("D: %f\n",[getTimeDifference(m1,m2)]).p;
+  return retVal;
+}
+
+
+float splint(float [] xIn, float [] yIn, float [] aux, float x)
+{
+  int k;
+  int khi;
+  int klo;
+  int N = xIn.size[1];
+  
+  klo = 1;
+  khi = N;
+  while(khi-klo > 1)
+  {
+    k = (khi+klo)/2;
+    if(xIn[k] > x) khi = k;
+    else klo = k;
+  }
+  return splint(klo,khi,xIn,yIn,aux,x);
+}
+
+
+
+
+/* ******************** */
+
+
+
+
+
+
+
+[float [] x, float [] u, float dx,float courant, float dt,int n]  initGrid(float xLeft,float xRight,int size,float courant)
+{
+/* User defined parameters: */
+
+  float dx = (xRight-xLeft)/(size-1);
+  float vars[4,size];
+  float x[size];
+
+  float dt = courant * dx;
+  
+  for(float val,int position in x) 
+    val = xLeft + dx * (position-1);
+  return [x,vars,dx,courant,dt,size];
+} 
+
+void sawInitialData(list left, list right,float amp, float sigma)
+{
+  float [] lu = left.u;
+  float [] ru = right.u;
+  float [] lx = left.x;
+
+  lu = 0.0;
+  ru = 0.0;
+  list leftSizes = lu.size;
+  int n = leftSizes[2];
+  
+  lu[first,120:n/2] = amp*lx[120:n/2] - amp*lx[120];
+  lu[first,n/2+1:n-119] = -amp*lx[n/2+1:n-119] + amp*lx[119];
+  
+  lu[second,120:n/2-1] = amp*lu[first,120:n/2-1] + left.dt*amp;
+  lu[second,n/2:n-118] = amp*lu[first,n/2:n-118] - left.dt*amp;
+}
+
+void gaussInitialData(list left, list right,float amp, float sigma)
+{
+  float [] lu = left.u;
+  float [] ru = right.u;
+  float [] lx = left.x;
+  lu = 0.0;
+  ru = 0.0;
+  list leftSizes = lu.size;
+  int n = leftSizes[2];
+  float dt = left.dt;
+  
+  lu[first,...] = amp*exp(-(lx-0.5)**2*sigma);
+  lu[second,...] = lu[first,...]  -2.0*(lx-0.5)*sigma*lu[first,...]*dt; // first deriv
+  lu[second,...] = lu[second,...] + ((-2.0*(lx-0.5)*sigma)**2 - 2.0 * sigma)* lu[first,...] * dt**2 / 2.0; // second deriv  
+}
+
+
+
+
+
+int main()
+{
+  int originalSize = 21;
+  int marker0 = getTimeReference();
+  list grid = initGrid(0.0,10.0,originalSize,0.5);
+  float [] u = grid.u;
+  float [] x = grid.x;
+  u[1,...] = sin(x)+2.0;
+
+  list grid2 = initGrid(0.0,10.0,50000,0.5);
+  float [] u2 = grid2.u;
+  float [] x2 = grid2.x;
+  
+  int marker1 = getTimeReference();
+
+  u[2,...] = computeFirstDerivative(x,u[1,...]);  
+  float [] splineTable = spline(x,u[1,...],u[2,1],u[2,grid.n]);
+  
+  float sum = 0.0;
+  for (int i in range(1,x2.size[1]))
+  {
+     float [] uu = u[1,...];
+     float tt = x2[i];
+     u2[1,i] = splint(x,uu,splineTable,tt);
+  }
+  
+  int marker2 = getTimeReference();
+  
+  printf("Took %f seconds",[getTimeDifference(marker1,marker2)]).p;
+  return 0;
+  
+  u2[2,...] = computeFirstDerivative(x,u2[1,...]);
+  
+  int marker4 = getTimeReference();
+  
+  /*
+  float boundary[1];
+  boundary[1] = 3.0;
+  
+  float additional[1,originalSize];
+  additional[1,...] = u[1,...];
+   
+  u[3,...] = ODE_rk4(x,additional,boundary,1,rs)[1,...];
+
+  
+  u[4,...] = 4.0 - cos(x) + 2*x;
+*/
+  printf("LOLA %.16f",[u[2,grid.n]]).p;
+  int marker5 = getTimeReference();
+  int marker6 = getTimeReference();
+  u[3,...] = splineTable;
+  printRows(grid2,"1100","%.16f","b",0);        
+  printRows(grid,"0010","%.16f","a",0);
+//  printf("%f %f %f %f %f %f\n",[getTimeDifference(marker0,marker1),getTimeDifference(marker1,marker2),getTimeDifference(marker2,marker3),getTimeDifference(marker3,marker4),getTimeDifference(marker4,marker5),getTimeDifference(marker5,marker6)]).p;
+  printResults();
+  return 0;
+}
+
