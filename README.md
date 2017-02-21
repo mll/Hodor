@@ -3,7 +3,7 @@ Hodor - a language for fast and convenient numerical computations
 
 Hodor was meant to replace Fortran as my go-to numerical computation language. 
 At the time (2013) there was no compelling, safe alternative to fortran/C when it comes to performant computing.
-Since discovering Julia (http://julialang.org) my interest in developing Hodor has waned.
+Since discovering [Julia](http://julialang.org) my interest in developing Hodor has waned.
 
 Hodor transpiler is based on yacc (bison) and flex. 
 It translates hodor scripts (*.hd) to C++. They are then linked with the Hodor standard library (written in C++) 
@@ -49,7 +49,7 @@ You can find more examples in scripts directory
 
 # Installation
 
-1. Get bison[https://www.gnu.org/software/bison/] and flex [https://github.com/westes/flex] (on OS X they come pre-installed)
+1. Get [Bison](https://www.gnu.org/software/bison/) and [flex](https://github.com/westes/flex) (on OS X they come pre-installed)
 2. Get make and g++ (on OS X they come with XCode)
 2. go to compiler directory
 3. make
