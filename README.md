@@ -45,6 +45,7 @@ void rk4step(float [] x, float [] u, float t, float h, function right)
    t = t + h;
 }
 ```
+You can find more examples in scripts directory
 
 # Installation
 
@@ -53,7 +54,7 @@ void rk4step(float [] x, float [] u, float t, float h, function right)
 2. go to compiler directory
 3. make
 4. go to scripts directory
-5. run ./hodor.sh name_of_your_hodor_file.hd
+5. ./hodor.sh name_of_your_hodor_file.hd
 
 The output is visible in test_range dir.
 The current version relies on OS X's Accelerate framework.
